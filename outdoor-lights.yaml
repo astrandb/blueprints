@@ -15,7 +15,6 @@ blueprint:
         number:
           min: -6
           max: 6
-          default: -2.75
           unit_of_measurement: "°"
     evening_sunset:
       name: Evening Sun elevation
@@ -24,14 +23,12 @@ blueprint:
         number:
           min: -6
           max: 6
-          default: -4.5
           unit_of_measurement: "°"
     evening_off:
       name: Evening turn off
       description: Time turn off lights.
       selector:
         time:
-          default: 23:55
 
 trigger:
   - platform: time
