@@ -1,0 +1,93 @@
+blueprint:
+  name: Outdoor_lighting
+  description: Manage lights after sun and time.
+  domain: automation
+  input:
+    morning_on:
+      name: Morning turn on
+      description: Time turn on lights.
+      selector:
+        time:
+    morning_sunrise:
+      name: Morning Sun elevation
+      description: Sun elevation when lights should not turn on.
+      selector:
+        number:
+          min: -6
+          max: 6
+          default: -2.75
+          unit_of_measurement: "°"
+    evening_sunset:
+      name: Evening Sun elevation
+      description: Sun elevation when lights should turn on.
+      selector:
+        number:
+          min: -6
+          max: 6
+          default: -4.5
+          unit_of_measurement: "°"
+    evening_off:
+      name: Evening turn off
+      description: Time turn off lights.
+      selector:
+        time:
+          default: 23:55
+
+trigger:
+  - platform: time
+    id: tr_morning_on
+    at: !input morning_on
+
+action:
+  - choose:
+      # IF morning
+      - conditions:
+          - condition: template
+            value_template: "{{ now().hour < 9 }}"
+        sequence:
+          - service: script.sim_morning
+  #     # ELIF day
+  #     - conditions:
+  #         - condition: template
+  #           value_template: "{{ now().hour < 18 }}"
+  #       sequence:
+  #         - service: light.turn_off
+  #           target:
+  #             entity_id: light.living_room
+  #         - service: script.sim_day
+  #   # ELSE night
+  #   default:
+  #     - service: light.turn_off
+  #       target:
+  #         entity_id: light.kitchen
+  #     - delay:
+  #         minutes: "{{ range(1, 11)|random }}"
+  #     - service: light.turn_off
+  #       target:
+  #         entity_id: all    action:
+  # - choose:
+  #     # IF morning
+  #     - conditions:
+  #         - condition: template
+  #           value_template: "{{ now().hour < 9 }}"
+  #       sequence:
+  #         - service: script.sim_morning
+  #     # ELIF day
+  #     - conditions:
+  #         - condition: template
+  #           value_template: "{{ now().hour < 18 }}"
+  #       sequence:
+  #         - service: light.turn_off
+  #           target:
+  #             entity_id: light.living_room
+  #         - service: script.sim_day
+  #   # ELSE night
+  #   default:
+  #     - service: light.turn_off
+  #       target:
+  #         entity_id: light.kitchen
+  #     - delay:
+  #         minutes: "{{ range(1, 11)|random }}"
+  #     - service: light.turn_off
+  #       target:
+  #         entity_id: all
