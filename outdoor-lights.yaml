@@ -1,90 +1,116 @@
 blueprint:
   name: Outdoor_lighting
-  description: Manage lights after sun and time.
+  description: Manage lights after sun elevation and time.
   domain: automation
   input:
     morning_on:
       name: Morning turn on
       description: Time turn on lights.
+      default: 06:30:00
       selector:
         time:
     morning_sunrise:
       name: Morning Sun elevation
-      description: Sun elevation when lights should not turn on.
+      description: Early morning sun elevation when lights should not turn on.
+      default: -4.0
       selector:
         number:
           min: -6
-          max: 6
+          max: 3
+          step: 0.1
           unit_of_measurement: "°"
     evening_sunset:
       name: Evening Sun elevation
-      description: Sun elevation when lights should turn on.
+      description: Sun elevation when lights should turn on/off.
+      default: -2.7
       selector:
         number:
           min: -6
-          max: 6
+          max: 3
+          step: 0.1
           unit_of_measurement: "°"
     evening_off:
       name: Evening turn off
       description: Time turn off lights.
+      default: "23:55:00"
       selector:
         time:
+    party_mode:
+      name: Party mode
+      description: Entity that indicates party mode
+      default: []
+      selector:
+        entity:
+          integration: input_boolean
+    lights_to_control:
+      name: Lights
+      description: Light entities to control
+      selector:
+        target:
+          entity:
+            domain: light
 
 trigger:
   - platform: time
     id: tr_morning_on
     at: !input morning_on
+  - platform: numeric_state
+    id: tr_morning_off
+    entity_id: sun.sun
+    attribute: elevation
+    above: !input morning_sunrise
+  - platform: time
+    id: tr_evening_off
+    at: !input evening_off
+  - platform: numeric_state
+    id: tr_evening_on
+    entity_id: sun.sun
+    attribute: elevation
+    below: !input evening_sunset
+  - platform: time
+    id: tr_reset_party
+    at: "07:00:00"
+
+variables:
+  party_modex: !input party_mode
 
 action:
   - choose:
-      # IF morning
       - conditions:
-          - condition: template
-            value_template: "{{ now().hour < 9 }}"
+          - condition: trigger
+            id: tr_morning_on
+          - condition: numeric_state
+            entity_id: sun.sun
+            attribute: elevation
+            below: !input morning_sunrise
         sequence:
-          - service: script.sim_morning
-  #     # ELIF day
-  #     - conditions:
-  #         - condition: template
-  #           value_template: "{{ now().hour < 18 }}"
-  #       sequence:
-  #         - service: light.turn_off
-  #           target:
-  #             entity_id: light.living_room
-  #         - service: script.sim_day
-  #   # ELSE night
-  #   default:
-  #     - service: light.turn_off
-  #       target:
-  #         entity_id: light.kitchen
-  #     - delay:
-  #         minutes: "{{ range(1, 11)|random }}"
-  #     - service: light.turn_off
-  #       target:
-  #         entity_id: all    action:
-  # - choose:
-  #     # IF morning
-  #     - conditions:
-  #         - condition: template
-  #           value_template: "{{ now().hour < 9 }}"
-  #       sequence:
-  #         - service: script.sim_morning
-  #     # ELIF day
-  #     - conditions:
-  #         - condition: template
-  #           value_template: "{{ now().hour < 18 }}"
-  #       sequence:
-  #         - service: light.turn_off
-  #           target:
-  #             entity_id: light.living_room
-  #         - service: script.sim_day
-  #   # ELSE night
-  #   default:
-  #     - service: light.turn_off
-  #       target:
-  #         entity_id: light.kitchen
-  #     - delay:
-  #         minutes: "{{ range(1, 11)|random }}"
-  #     - service: light.turn_off
-  #       target:
-  #         entity_id: all
+          - service: homeassistant.turn_on
+            target: !input lights_to_control
+      - conditions:
+          - condition: trigger
+            id: tr_morning_off
+        sequence:
+          - service: homeassistant.turn_off
+            target: !input lights_to_control
+      - conditions:
+          - condition: trigger
+            id: tr_evening_on
+        sequence:
+          - service: homeassistant.turn_on
+            target: !input lights_to_control
+      - conditions:
+          - condition: trigger
+            id: tr_evening_off
+          - condition: template
+            value_template: "{{ party_modex|length == 0 or is_state(party_modex, 'off') }}"
+        sequence:
+          - service: homeassistant.turn_off
+            target: !input lights_to_control
+      - conditions:
+          - condition: trigger
+            id: tr_reset_party
+          - condition: template
+            value_template: "{{ party_modex|length > 0 }}"
+        sequence:
+          - service: input_boolean.turn_off
+            entity_id: !input party_mode
