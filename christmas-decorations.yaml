@@ -1,0 +1,80 @@
+blueprint:
+  name: Christmas Decorations
+  description: Manage lights by time and optionally if house is in use
+  domain: automation
+  input:
+    morning_on:
+      name: Morning turn on
+      description: Time turn on lights.
+      default: 07:00:00
+      selector:
+        time:
+    evening_off:
+      name: Evening turn off
+      description: Time turn off lights.
+      default: "23:55:00"
+      selector:
+        time:
+    party_mode:
+      name: Party mode
+      description: Entity that indicates party mode
+      default: []
+      selector:
+        entity:
+          integration: input_boolean
+    in_use_mode:
+      name: Home in use
+      description: Entity that indicates if home is in use
+      default: []
+      selector:
+        entity:
+          integration: input_boolean
+    lights_to_control:
+      name: Lights
+      description: Light entities to control
+      selector:
+        target:
+          entity:
+            domain: light
+
+trigger:
+  - platform: time
+    id: tr_morning_on
+    at: !input morning_on
+  - platform: time
+    id: tr_evening_off
+    at: !input evening_off
+  - platform: time
+    id: tr_reset_party
+    at: "06:30:00"
+
+variables:
+  party_modex: !input party_mode
+  in_use_modex: !input in_use_mode
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: tr_morning_on
+          - condition: template
+            value_template: "{{ in_use_modex|length == 0 or is_state(in_use_modex, 'on') }}"
+        sequence:
+          - service: homeassistant.turn_on
+            target: !input lights_to_control
+      - conditions:
+          - condition: trigger
+            id: tr_evening_off
+          - condition: template
+            value_template: "{{ party_modex|length == 0 or is_state(party_modex, 'off') }}"
+        sequence:
+          - service: homeassistant.turn_off
+            target: !input lights_to_control
+      - conditions:
+          - condition: trigger
+            id: tr_reset_party
+          - condition: template
+            value_template: "{{ party_modex|length > 0 }}"
+        sequence:
+          - service: input_boolean.turn_off
+            entity_id: !input party_mode
