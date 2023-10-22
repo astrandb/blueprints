@@ -1,0 +1,59 @@
+blueprint:
+  name: Street Lighting
+  description: Manage lights after sun elevation and time.
+  domain: automation
+  input:
+    morning_sunrise:
+      name: Morning Sun elevation
+      description: Early morning sun elevation when lights should not turn on.
+      default: -4.0
+      selector:
+        number:
+          min: -6
+          max: 3
+          step: 0.1
+          unit_of_measurement: "°"
+    evening_sunset:
+      name: Evening Sun elevation
+      description: Sun elevation when lights should turn on/off.
+      default: -2.7
+      selector:
+        number:
+          min: -6
+          max: 3
+          step: 0.1
+          unit_of_measurement: "°"
+    lights_to_control:
+      name: Lights
+      description: Light entities to control
+      selector:
+        target:
+          entity:
+            domain: light
+
+trigger:
+  - platform: numeric_state
+    id: tr_morning_off
+    entity_id: sun.sun
+    attribute: elevation
+    above: !input morning_sunrise
+  - platform: numeric_state
+    id: tr_evening_on
+    entity_id: sun.sun
+    attribute: elevation
+    below: !input evening_sunset
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: tr_morning_off
+        sequence:
+          - service: homeassistant.turn_off
+            target: !input lights_to_control
+      - conditions:
+          - condition: trigger
+            id: tr_evening_on
+        sequence:
+          - service: homeassistant.turn_on
+            target: !input lights_to_control
